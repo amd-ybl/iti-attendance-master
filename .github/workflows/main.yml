@@ -18,20 +18,17 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Install Electron Builder
-        run: npm install --save-dev electron electron-builder
-
-      - name: Build Web App
-        run: npm run build
+      - name: Initialize Electron App
+        run: |
+          npm init -y
+          npm install electron electron-builder
 
       - name: Create Electron Main File
+        shell: pwsh
         run: |
-          Set-Content -Path "electron-main.cjs" -Value @"
+          @'
           const { app, BrowserWindow, Menu } = require('electron');
-          const path = require('path');
+
           function createWindow() {
             const mainWindow = new BrowserWindow({
               width: 1366,
@@ -40,17 +37,25 @@ jobs:
               minHeight: 650,
               title: 'ITI Attendance Master',
               autoHideMenuBar: true,
-              webPreferences: { nodeIntegration: false, contextIsolation: true }
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+              }
             });
+
             Menu.setApplicationMenu(null);
-            mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+            mainWindow.loadURL('https://ais-pre-imficyxjd7as3oyhv26rw2-489790092467.asia-southeast1.run.app');
           }
+
           app.whenReady().then(createWindow);
-          app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-          "@
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') app.quit();
+          });
+          '@ | Out-File -FilePath "main.js" -Encoding utf8
 
       - name: Build Windows .EXE Installer
-        run: npx electron-builder --win --x64 -c.extraMetadata.main="electron-main.cjs" -c.productName="ITI-Attendance-Master" -c.appId="com.itibilha.attendancemaster" -c.win.target="nsis" -c.directories.output="release"
+        run: npx electron-builder --win --x64 -c.extraMetadata.main="main.js" -c.productName="ITI-Attendance-Master" -c.appId="com.itibilha.attendancemaster" -c.win.target="nsis" -c.directories.output="release"
 
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
