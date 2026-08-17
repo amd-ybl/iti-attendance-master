@@ -1,0 +1,64 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Initialize Electron App
+        run: |
+          npm init -y
+          npm install electron electron-builder
+
+      - name: Create Electron Main File
+        shell: pwsh
+        run: |
+          @'
+          const { app, BrowserWindow, Menu } = require('electron');
+
+          function createWindow() {
+            const mainWindow = new BrowserWindow({
+              width: 1366,
+              height: 850,
+              minWidth: 1024,
+              minHeight: 650,
+              title: 'ITI Attendance Master',
+              autoHideMenuBar: true,
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+              }
+            });
+
+            Menu.setApplicationMenu(null);
+            mainWindow.loadURL('https://ais-pre-imficyxjd7as3oyhv26rw2-489790092467.asia-southeast1.run.app');
+          }
+
+          app.whenReady().then(createWindow);
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') app.quit();
+          });
+          '@ | Out-File -FilePath "main.js" -Encoding utf8
+
+      - name: Build Windows .EXE Installer
+        run: npx electron-builder --win --x64 -c.extraMetadata.main="main.js" -c.productName="ITI-Attendance-Master" -c.appId="com.itibilha.attendancemaster" -c.win.target="nsis" -c.directories.output="release"
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: ITI-Attendance-Master-Windows-EXE
+          path: release/*.exe
